@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f0c29" />
+  <title>Home Budget — Track Income &amp; Expenses</title>
+  <meta name="description" content="Track your home income and expenses with credit cards, charts and Excel export. Amounts in INR (₹)." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <img src="icon.png" class="brand-icon-img" alt="Home Budget" />
+        <span class="brand-name">Home Budget</span>
+      </div>
+      <div class="header-month">
+        <button class="month-nav" id="prevMonth" aria-label="Previous month">&#8249;</button>
+        <span id="currentMonthLabel" class="month-label"></span>
+        <button class="month-nav" id="nextMonth" aria-label="Next month">&#8250;</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Summary Cards ── -->
+  <section class="summary-section" aria-label="Financial Summary">
+    <div class="summary-card income-card">
+      <div class="card-icon">↑</div>
+      <div class="card-info">
+        <span class="card-label">Income</span>
+        <span class="card-amount" id="totalIncome">₹0</span>
+      </div>
+    </div>
+    <div class="summary-card expense-card">
+      <div class="card-icon">↓</div>
+      <div class="card-info">
+        <span class="card-label">Expense</span>
+        <span class="card-amount" id="totalExpense">₹0</span>
+      </div>
+    </div>
+    <div class="summary-card balance-card">
+      <div class="card-icon">≈</div>
+      <div class="card-info">
+        <span class="card-label">Balance</span>
+        <span class="card-amount" id="totalBalance">₹0</span>
+      </div>
+    </div>
+    <div class="summary-card credit-card-summary-card" id="creditSummaryCard" style="display:none">
+      <div class="card-icon">💳</div>
+      <div class="card-info">
+        <span class="card-label">Credit Due</span>
+        <span class="card-amount" id="totalCredit">₹0</span>
+      </div>
+    </div>
+    <div class="summary-card loan-summary-card" id="loanSummaryCard" style="display:none; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.08);">
+      <div class="card-icon" style="color: var(--accent2); background: rgba(167,139,250,0.15);">🏦</div>
+      <div class="card-info">
+        <span class="card-label" style="color: var(--text3);">Loans Due</span>
+        <span class="card-amount" id="totalLoanOutstanding" style="color: var(--accent2);">₹0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Bottom Nav ── -->
+  <nav class="bottom-nav" role="navigation" aria-label="Main Navigation">
+    <button class="nav-btn active" data-tab="dashboard" aria-label="Dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-btn" data-tab="transactions" aria-label="Transactions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      <span>History</span>
+    </button>
+    <button class="nav-btn add-btn" id="navAdd" aria-label="Add Transaction">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="nav-btn" data-tab="cards" aria-label="Credit Cards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Cards</span>
+    </button>
+    <button class="nav-btn" data-tab="loans" aria-label="Personal Loans">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+      <span>Loans</span>
+    </button>
+    <button class="nav-btn" data-tab="charts" aria-label="Charts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Charts</span>
+    </button>
+  </nav>
+
+  <!-- ══ TAB: Dashboard ══ -->
+  <main class="tab-content active" id="tabDashboard">
+    <div class="section-title">
+      <h1>Overview</h1>
+      <span class="subtitle" id="dashboardMonth"></span>
+    </div>
+    <div class="charts-row">
+      <div class="mini-chart-card">
+        <h3>Expenses</h3>
+        <div class="chart-wrap">
+          <canvas id="dashExpenseChart"></canvas>
+          <div class="chart-center-label" id="dashExpenseCenter">₹0</div>
+        </div>
+        <div class="mini-legend" id="dashExpenseLegend"></div>
+      </div>
+      <div class="mini-chart-card">
+        <h3>Income</h3>
+        <div class="chart-wrap">
+          <canvas id="dashIncomeChart"></canvas>
+          <div class="chart-center-label" id="dashIncomeCenter">₹0</div>
+        </div>
+        <div class="mini-legend" id="dashIncomeLegend"></div>
+      </div>
+    </div>
+    <!-- Credit card mini summary on dashboard -->
+    <div id="dashCreditSection" style="display:none">
+      <div class="section-header-row" style="margin-bottom:10px">
+        <h3 class="section-sub-h3">Credit Card Spending</h3>
+        <button class="see-all-btn" data-tab="cards">Manage</button>
+      </div>
+      <div id="dashCreditCards" class="dash-credit-list"></div>
+    </div>
+    <!-- Personal Loans mini summary on dashboard -->
+    <div id="dashLoanSection" style="display:none">
+      <div class="section-header-row" style="margin-bottom:10px">
+        <h3 class="section-sub-h3">Personal Loans</h3>
+        <button class="see-all-btn" data-tab="loans">Manage</button>
+      </div>
+      <div id="dashLoans" class="dash-loan-list"></div>
+    </div>
+    <div class="bar-chart-card">
+      <h3>Monthly Trend</h3>
+      <div class="bar-chart-wrap"><canvas id="dashTrendChart"></canvas></div>
+    </div>
+    <div class="recent-section">
+      <div class="section-header-row">
+        <h3 class="section-sub-h3">Recent Transactions</h3>
+        <button class="see-all-btn" data-tab="transactions">See All</button>
+      </div>
+      <div id="recentList" class="transaction-list"></div>
+      <div class="empty-state" id="recentEmpty">
+        <div class="empty-icon">📋</div>
+        <p>No transactions yet.<br>Tap <strong>+</strong> to add one.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ══ TAB: Transactions ══ -->
+  <main class="tab-content" id="tabTransactions">
+    <div class="section-title tx-title-row">
+      <div>
+        <h1>Transactions</h1>
+        <span class="subtitle" id="txMonthLabel"></span>
+      </div>
+      <button class="export-btn" id="exportExcel" aria-label="Export to Excel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Export
+      </button>
+    </div>
+    <div class="filter-row">
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="income">Income</button>
+      <button class="filter-chip" data-filter="expense">Expense</button>
+    </div>
+    <div id="transactionList" class="transaction-list"></div>
+    <div class="empty-state" id="transactionEmpty">
+      <div class="empty-icon">💸</div>
+      <p>No transactions for this month.<br>Tap <strong>+</strong> to add one.</p>
+    </div>
+  </main>
+
+  <!-- ══ TAB: Credit Cards ══ -->
+  <main class="tab-content" id="tabCards">
+    <div class="section-title cards-title-row">
+      <div>
+        <h1>Credit Cards</h1>
+        <span class="subtitle" id="cardsMonthLabel"></span>
+      </div>
+      <button class="add-card-fab" id="addCardBtn" aria-label="Add credit card">+ Add Card</button>
+    </div>
+
+    <div id="noCardsState" class="empty-state" style="display:none">
+      <div class="empty-icon">💳</div>
+      <p>No credit cards added yet.<br>Tap <strong>+ Add Card</strong> to get started.</p>
+    </div>
+
+    <div id="cardsList"></div>
+
+    <!-- Category management inside Cards tab -->
+    <div class="categories-group" style="margin-top:8px">
+      <div class="cat-group-header">
+        <span>💚 Income Categories</span>
+        <button class="add-cat-btn" id="addIncomeCategory">+ Add</button>
+      </div>
+      <div id="incomeCatList" class="cat-list"></div>
+    </div>
+    <div class="categories-group">
+      <div class="cat-group-header">
+        <span>❤️ Expense Categories</span>
+        <button class="add-cat-btn" id="addExpenseCategory">+ Add</button>
+      </div>
+      <div id="expenseCatList" class="cat-list"></div>
+    </div>
+  </main>
+
+  <!-- ══ TAB: Personal Loans ══ -->
+  <main class="tab-content" id="tabLoans">
+    <div class="section-title loans-title-row" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0 8px;">
+      <div>
+        <h1>Personal Loans</h1>
+        <span class="subtitle" id="loansMonthLabel"></span>
+      </div>
+      <button class="add-card-fab" id="addLoanBtn" aria-label="Add Personal Loan">+ Add Loan</button>
+    </div>
+
+    <div id="noLoansState" class="empty-state" style="display:none">
+      <div class="empty-icon">🏦</div>
+      <p>No personal loans added yet.<br>Tap <strong>+ Add Loan</strong> to get started.</p>
+    </div>
+
+    <div id="loansList"></div>
+  </main>
+
+  <!-- ══ TAB: Charts ══ -->
+  <main class="tab-content" id="tabCharts">
+    <div class="section-title">
+      <h1>Analytics</h1>
+      <span class="subtitle" id="chartMonthLabel"></span>
+    </div>
+    <div class="chart-full-card">
+      <h3>Expense by Category</h3>
+      <div class="full-chart-wrap"><canvas id="expensePieChart"></canvas></div>
+      <div class="full-legend" id="expensePieLegend"></div>
+    </div>
+    <div class="chart-full-card">
+      <h3>Expense by Source</h3>
+      <div class="full-chart-wrap"><canvas id="expenseSourceChart"></canvas></div>
+      <div class="full-legend" id="expenseSourceLegend"></div>
+    </div>
+    <div class="chart-full-card">
+      <h3>Income by Category</h3>
+      <div class="full-chart-wrap"><canvas id="incomePieChart"></canvas></div>
+      <div class="full-legend" id="incomePieLegend"></div>
+    </div>
+    <div class="chart-full-card">
+      <h3>Income vs Expense (6 Months)</h3>
+      <div class="full-chart-wrap"><canvas id="barCompareChart"></canvas></div>
+    </div>
+  </main>
+
+</div><!-- /app -->
+
+<!-- ══ Modal: Add Transaction ══ -->
+<div class="modal-overlay" id="addModal" aria-modal="true" role="dialog">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">Add Transaction</h2>
+
+    <div class="type-toggle">
+      <button class="type-btn active" id="typeExpense">Expense</button>
+      <button class="type-btn" id="typeIncome">Income</button>
+    </div>
+
+    <div class="form-group">
+      <label for="txAmount">Amount (₹)</label>
+      <div class="amount-input-wrap">
+        <span class="currency-prefix">₹</span>
+        <input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="txDate">Date</label>
+      <input type="date" id="txDate" />
+    </div>
+
+    <div class="form-group">
+      <label for="txCategory">Category</label>
+      <select id="txCategory"><option value="">Select category...</option></select>
+    </div>
+
+    <!-- Pay From — shown only for expense -->
+    <div class="form-group" id="payFromGroup">
+      <label>Pay From</label>
+      <div class="pay-from-row" id="payFromRow">
+        <button class="pay-source-btn active" data-source="cash" id="paySourceCash">
+          <span class="pay-source-icon">🏦</span>
+          <span>Bank / Cash</span>
+        </button>
+        <!-- credit card buttons injected here -->
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="txNote">
+        Note <span class="label-optional">(optional)</span>
+        <span class="char-counter" id="noteCounter">0/200</span>
+      </label>
+      <textarea id="txNote" placeholder="e.g. Paid via UPI, monthly bill..." maxlength="200" rows="3"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelModal">Cancel</button>
+      <button class="btn-save" id="saveTransaction">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Add Credit Card ══ -->
+<div class="modal-overlay" id="addCardModal" aria-modal="true" role="dialog">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">Add Credit Card</h2>
+
+    <div class="form-group">
+      <label for="cardName">Card Name</label>
+      <input type="text" id="cardName" placeholder="e.g. HDFC Millennia" maxlength="30" />
+    </div>
+    <div class="form-group">
+      <label for="cardLast4">Last 4 Digits</label>
+      <input type="number" id="cardLast4" placeholder="1234" maxlength="4" inputmode="numeric" />
+    </div>
+    <div class="form-group">
+      <label for="cardLimit">Credit Limit (₹) <span class="label-optional">optional</span></label>
+      <div class="amount-input-wrap">
+        <span class="currency-prefix">₹</span>
+        <input type="number" id="cardLimit" placeholder="100000" min="0" inputmode="numeric" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="cardExistingDue">Existing Due (₹) <span class="label-optional">balance already owed</span></label>
+      <div class="amount-input-wrap">
+        <span class="currency-prefix">₹</span>
+        <input type="number" id="cardExistingDue" placeholder="0" min="0" inputmode="numeric" />
+      </div>
+      <div class="field-hint">Enter the outstanding amount on this card before you start tracking new expenses.</div>
+    </div>
+    <div class="form-group">
+      <label>Card Color</label>
+      <div class="color-picker" id="colorPicker"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelCardModal">Cancel</button>
+      <button class="btn-save" id="saveCardModal">Add Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Edit Existing Due ══ -->
+<div class="modal-overlay" id="editDueModal" aria-modal="true" role="dialog">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title" id="editDueTitle">Update Existing Due</h2>
+    <input type="hidden" id="editDueCardId" />
+    <div class="due-card-preview" id="editDuePreview"></div>
+    <div class="form-group" style="margin-top:16px">
+      <label for="editDueAmount">Existing Due (₹)</label>
+      <div class="amount-input-wrap">
+        <span class="currency-prefix">₹</span>
+        <input type="number" id="editDueAmount" placeholder="0" min="0" inputmode="decimal" />
+      </div>
+      <div class="field-hint">This is the amount owed on this card <em>before</em> any new expenses tracked here. Update it when you make a payment.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelEditDue">Cancel</button>
+      <button class="btn-save" id="saveEditDue">Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Add Personal Loan ══ -->
+<div class="modal-overlay" id="addLoanModal" aria-modal="true" role="dialog">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">Add Personal Loan</h2>
+
+    <div class="form-group">
+      <label for="loanName">Loan Name</label>
+      <input type="text" id="loanName" placeholder="e.g. SBI Car Loan" maxlength="30" />
+    </div>
+    <div class="form-group">
+      <label for="loanPrincipal">Total Loan Amount / Principal (₹)</label>
+      <div class="amount-input-wrap">
+        <span class="currency-prefix">₹</span>
+        <input type="number" id="loanPrincipal" placeholder="500000" min="0" inputmode="numeric" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="loanExistingDue">Existing Outstanding Due (₹)</label>
+      <div class="amount-input-wrap">
+        <span class="currency-prefix">₹</span>
+        <input type="number" id="loanExistingDue" placeholder="400000" min="0" inputmode="numeric" />
+      </div>
+      <div class="field-hint">Enter the outstanding amount on this loan before you start tracking payments.</div>
+    </div>
+    <div class="form-group">
+      <label>Loan Theme Color</label>
+      <div class="color-picker" id="loanColorPicker"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelLoanModal">Cancel</button>
+      <button class="btn-save" id="saveLoanModal">Add Loan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Edit Loan Outstanding ══ -->
+<div class="modal-overlay" id="editLoanDueModal" aria-modal="true" role="dialog">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title" id="editLoanDueTitle">Update Loan Outstanding</h2>
+    <input type="hidden" id="editLoanDueId" />
+    <div class="due-card-preview" id="editLoanDuePreview"></div>
+    <div class="form-group" style="margin-top:16px">
+      <label for="editLoanDueAmount">Existing Outstanding Due (₹)</label>
+      <div class="amount-input-wrap">
+        <span class="currency-prefix">₹</span>
+        <input type="number" id="editLoanDueAmount" placeholder="0" min="0" inputmode="decimal" />
+      </div>
+      <div class="field-hint">This is the amount owed on this loan <em>before</em> any payments tracked here.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelEditLoanDue">Cancel</button>
+      <button class="btn-save" id="saveEditLoanDue">Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Add Category ══ -->
+<div class="modal-overlay" id="catModal" aria-modal="true" role="dialog">
+  <div class="modal-sheet modal-sheet-sm">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title" id="catModalTitle">Add Category</h2>
+    <div class="form-group">
+      <label for="catName">Category Name</label>
+      <input type="text" id="catName" placeholder="e.g. Groceries" maxlength="30" />
+    </div>
+    <div class="form-group">
+      <label>Pick an Emoji</label>
+      <div class="emoji-picker" id="emojiPicker"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelCatModal">Cancel</button>
+      <button class="btn-save" id="saveCatModal">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
